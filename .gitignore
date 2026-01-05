@@ -1,0 +1,144 @@
+############################################
+# GENERAL
+############################################
+
+# OS generated files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor / IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*.log
+
+############################################
+# ENVIRONMENT VARIABLES (CRITICAL)
+############################################
+
+.env
+.env.*
+!.env.example
+
+############################################
+# NODE / JAVASCRIPT
+############################################
+
+# Node dependencies
+node_modules/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Build outputs
+dist/
+build/
+
+############################################
+# REACT (Frontend)
+############################################
+
+# React build folder
+dashboard-frontend/build/
+sentinel-dashboard/build/
+
+# Cache
+.eslintcache
+
+############################################
+# PYTHON / FASTAPI
+############################################
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# Python tooling
+.pytest_cache/
+.mypy_cache/
+
+############################################
+# DATABASE
+############################################
+
+# MongoDB data
+data/
+mongo-data/
+dump/
+
+############################################
+# BLOCKCHAIN / HARDHAT
+############################################
+
+# Hardhat artifacts
+artifacts/
+cache/
+
+# Coverage
+coverage/
+
+# Hardhat environment
+typechain/
+hardhat/node_modules/
+
+############################################
+# DOCKER
+############################################
+
+# Docker runtime files
+*.pid
+*.sock
+
+# Docker volumes
+docker-volumes/
+volumes/
+
+############################################
+# SECURITY / SENSITIVE
+############################################
+
+# API keys / credentials
+*.key
+*.pem
+*.crt
+secrets/
+keys/
+
+############################################
+# TEMP / MISC
+############################################
+
+# Temporary files
+tmp/
+temp/
+
+# Backup files
+*.bak
+*.old
+
+############################################
+# TEST OUTPUTS
+############################################
+
+# Test reports
+reports/
+test-results/
+
+############################################
+# FRONTEND LOCAL STORAGE / CACHE (OPTIONAL)
+############################################
+
+.local/
+.cache/
