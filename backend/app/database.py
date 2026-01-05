@@ -211,3 +211,58 @@ async def log_query(
             duration_mins
         ))
         conn.commit()
+
+async def get_all_users() -> list:
+    """Fetch all active users for admin dashboard"""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM users ORDER BY last_active_at DESC")
+        rows = cursor.fetchall()
+        
+        users = []
+        for row in rows:
+            user_state = {
+                "user_id": row["user_id"],
+                "first_seen_at": row["first_seen_at"],
+                "last_active_at": row["last_active_at"],
+                "dynamic_mean_rpm": row["dynamic_mean_rpm"],
+                "total_queries": row["total_queries"],
+                "time_active": 0.0,
+                "hybrid_score": 0.0,
+                "tier": 1
+            }
+            
+            # Calculate time_active
+            if row["first_seen_at"]:
+                first_seen = datetime.fromisoformat(row["first_seen_at"])
+                last_active = datetime.fromisoformat(row["last_active_at"])
+                time_active = (last_active - first_seen).total_seconds() / 60
+                user_state["time_active"] = max(0, time_active)
+            
+            users.append(user_state)
+        
+        return users
+
+async def get_all_logs() -> list:
+    """Fetch all query logs"""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM query_logs ORDER BY timestamp DESC LIMIT 1000")
+        rows = cursor.fetchall()
+        
+        return [dict(row) for row in rows]
+
+async def get_all_audit_records() -> list:
+    """Fetch all blockchain audit records"""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT user_id, timestamp, tier, '' as tx_hash, 'confirmed' as status
+            FROM query_logs 
+            WHERE tier = 3 
+            ORDER BY timestamp DESC 
+            LIMIT 100
+        """)
+        rows = cursor.fetchall()
+        
+        return [dict(row) for row in rows]
