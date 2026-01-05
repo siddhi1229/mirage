@@ -1,0 +1,55 @@
+.app-container {
+  display: flex;
+  height: 100vh;
+  background: #f5f6fa;
+}
+
+/* Sidebar */
+.sidebar {
+  width: 240px;
+  background: #111827;
+  color: white;
+  padding: 20px;
+}
+
+.sidebar .logo {
+  margin-bottom: 25px;
+}
+
+.sidebar ul {
+  list-style: none;
+  padding: 0;
+}
+
+.sidebar li {
+  margin: 14px 0;
+}
+
+.sidebar a {
+  color: #e5e7eb;
+  text-decoration: none;
+}
+
+.sidebar a:hover {
+  color: white;
+}
+
+/* Main Area */
+.main-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Topbar */
+.topbar {
+  background: white;
+  padding: 12px 18px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+/* Page content */
+.content {
+  padding: 18px;
+  overflow-y: auto;
+}
