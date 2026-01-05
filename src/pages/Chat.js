@@ -1,124 +1,111 @@
-import { useState } from "react";
-import API from "../services/api";
+import React, { useState } from 'react';
+import axios from 'axios';
 
-/* helper function (outside component) */
-function getUserId() {
-  let id = localStorage.getItem("sentinel_user");
-  if (!id) {
-    id = "user-" + Math.random().toString(36).substring(2, 9);
-    localStorage.setItem("sentinel_user", id);
-  }
-  return id;
-}
-
-export default function Chat() {
-  const userId = getUserId();
-
+export default function Chat({ backendUrl }) {
+  const [userId, setUserId] = useState(localStorage.getItem('chatUserId') || 'user-demo');
+  const [message, setMessage] = useState('');
   const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [responseTime, setResponseTime] = useState(null);
 
-  async function sendMessage(e) {
-    e.preventDefault();
-    if (!input.trim()) return;
+  const handleSend = async () => {
+    if (!message.trim()) return;
 
-    const text = input;
-    setInput("");
-
-    setMessages(prev => [...prev, { role: "user", text }]);
+    const userMsg = { role: 'user', text: message };
+    setMessages([...messages, userMsg]);
+    setMessage('');
     setLoading(true);
 
+    const startTime = Date.now();
+
     try {
-      const res = await API.post("/chat", {
+      const response = await axios.post(`${backendUrl}/api/chat`, {
         userId,
-        prompt: text
+        prompt: message
       });
 
-      setMessages(prev => [
-        ...prev,
-        { role: "bot", text: res.data.response || "No response received." }
-      ]);
-    } catch (err) {
-      setMessages(prev => [
-        ...prev,
-        { role: "bot", text: "⚠ Could not reach backend." }
-      ]);
+      const time = Date.now() - startTime;
+      setResponseTime(time);
+
+      const botMsg = {
+        role: 'bot',
+        text: response.data.response || 'No response received'
+      };
+      setMessages(m => [...m, botMsg]);
+
+      localStorage.setItem('chatUserId', userId);
+    } catch (error) {
+      const errMsg = { role: 'system', text: `Error: ${error.message}` };
+      setMessages(m => [...m, errMsg]);
     }
 
-    setLoading(false); // ✅ IMPORTANT
-  }
+    setLoading(false);
+  };
 
-  /* ✅ THIS WAS MISSING */
   return (
     <div>
-      <h2>Chat Interface</h2>
+      <h1>Chat Interface</h1>
 
-      <div
-        style={{
-          border: "1px solid #ddd",
-          borderRadius: 8,
-          padding: 16,
-          height: "60vh",
-          overflowY: "auto",
-          background: "white",
-          marginBottom: 16
-        }}
-      >
-        {messages.map((m, i) => (
-          <div
-            key={i}
-            style={{
-              marginBottom: 10,
-              textAlign: m.role === "user" ? "right" : "left"
-            }}
-          >
-            <span
-              style={{
-                display: "inline-block",
-                padding: "8px 12px",
-                borderRadius: 12,
-                background: m.role === "user" ? "#2563eb" : "#e5e7eb",
-                color: m.role === "user" ? "white" : "black"
-              }}
-            >
-              {m.text}
-            </span>
+      <div className="panel-split">
+        {/* CLIENT */}
+        <div className="panel">
+          <h2>Send Query</h2>
+
+          <div className="form-group">
+            <label>User ID</label>
+            <input
+              type="text"
+              value={userId}
+              onChange={(e) => setUserId(e.target.value)}
+              placeholder="e.g., attacker-001"
+            />
           </div>
-        ))}
 
-        {loading && (
-          <p style={{ fontStyle: "italic", color: "#6b7280" }}>
-            Assistant is typing…
-          </p>
-        )}
+          <div className="form-group">
+            <label>Message</label>
+            <textarea
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder="Type your message..."
+              rows="6"
+              onKeyPress={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSend();
+                }
+              }}
+            />
+          </div>
+
+          <button onClick={handleSend} disabled={loading || !message.trim()}>
+            {loading ? '⏳ Processing...' : '⚡ Send'}
+          </button>
+
+          {responseTime && (
+            <div style={{ marginTop: '12px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+              Response time: <strong style={{ color: 'var(--tier1-green)' }}>{responseTime}ms</strong>
+            </div>
+          )}
+        </div>
+
+        {/* MESSAGES */}
+        <div className="panel">
+          <h2>Messages</h2>
+          <div style={{ height: '400px', overflowY: 'auto' }}>
+            {messages.length === 0 ? (
+              <p style={{ color: 'var(--text-secondary)', textAlign: 'center' }}>
+                No messages yet. Send one to start.
+              </p>
+            ) : (
+              messages.map((msg, idx) => (
+                <div key={idx} className={`message ${msg.role}`}>
+                  {msg.text}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
       </div>
-
-      <form onSubmit={sendMessage} style={{ display: "flex", gap: 8 }}>
-        <input
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          placeholder="Ask something…"
-          style={{
-            flex: 1,
-            padding: 10,
-            borderRadius: 8,
-            border: "1px solid #ccc"
-          }}
-        />
-        <button
-          type="submit"
-          style={{
-            padding: "10px 16px",
-            borderRadius: 8,
-            border: "none",
-            background: "#111827",
-            color: "white",
-            cursor: "pointer"
-          }}
-        >
-          Send
-        </button>
-      </form>
     </div>
   );
 }

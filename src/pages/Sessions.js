@@ -1,103 +1,62 @@
-import { useEffect, useState } from "react";
-import API from "../services/api";
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 
-export default function Sessions() {
+export default function Sessions({ backendUrl }) {
   const [sessions, setSessions] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  async function fetchSessions() {
-    try {
-      const res = await API.get("/sessions");
-      setSessions(res.data || []);
-      setError("");
-    } catch (e) {
-      setError("Could not load sessions (backend offline?).");
-    }
-    setLoading(false);
-  }
 
   useEffect(() => {
-    fetchSessions();
+    const fetchData = async () => {
+      try {
+        const response = await axios.get(`${backendUrl}/api/sessions`);
+        setSessions(Array.isArray(response.data) ? response.data : []);
+      } catch (error) {
+        console.error('Failed to fetch sessions:', error);
+      }
+    };
 
-    // auto-refresh every 5 seconds
-    const interval = setInterval(fetchSessions, 5000);
+    fetchData();
+    const interval = setInterval(fetchData, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [backendUrl]);
 
   return (
     <div>
-      <h2>Active Sessions</h2>
+      <h1>Active Sessions</h1>
 
-      {loading && <p>Loading...</p>}
-      {error && <p style={{ color: "red" }}>{error}</p>}
-
-      {!loading && sessions.length === 0 && !error && (
-        <p>No active sessions.</p>
-      )}
-
-      {!loading && sessions.length > 0 && (
-        <table
-          style={{
-            width: "100%",
-            borderCollapse: "collapse",
-            marginTop: 16,
-            background: "white"
-          }}
-        >
-          <thead>
-            <tr style={{ background: "#f3f4f6" }}>
-              <th style={th}>User ID</th>
-              <th style={th}>Current Tier</th>
-              <th style={th}>First Seen</th>
-              <th style={th}>Last Active</th>
-              <th style={th}>Requests / Min</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {sessions.map((s, i) => (
-              <tr key={i} style={{ borderBottom: "1px solid #e5e7eb" }}>
-                <td style={td}>{mask(s.userId)}</td>
-                <td style={td}>{formatTier(s.tier)}</td>
-                <td style={td}>{formatTime(s.first_seen_at)}</td>
-                <td style={td}>{formatTime(s.last_active_at)}</td>
-                <td style={td}>{s.dynamic_mean_rpm ?? 0}</td>
+      <div className="panel">
+        {sessions.length === 0 ? (
+          <p style={{ color: 'var(--text-secondary)' }}>No active sessions</p>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th>User ID</th>
+                <th>Tier</th>
+                <th>First Seen</th>
+                <th>Last Active</th>
+                <th>Time Active (min)</th>
+                <th>Requests/Min</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+            </thead>
+            <tbody>
+              {sessions.map((session, idx) => (
+                <tr key={idx}>
+                  <td>{session.userId}</td>
+                  <td>
+                    <span className={`badge tier-${session.tier}`}>
+                      {session.tier === 1 ? 'Clean' : session.tier === 2 ? 'Suspicious' : 'Malicious'}
+                    </span>
+                  </td>
+                  <td>{session.first_seen_at ? new Date(session.first_seen_at).toLocaleString() : '-'}</td>
+                  <td>{session.last_active_at ? new Date(session.last_active_at).toLocaleTimeString() : '-'}</td>
+                  <td>{session.time_active || 0}</td>
+                  <td>{(session.dynamic_mean_rpm || 0).toFixed(2)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
     </div>
   );
 }
-
-const th = {
-  padding: 10,
-  textAlign: "left",
-  fontWeight: 600
-};
-
-const td = {
-  padding: 10,
-  textAlign: "left"
-};
-
-// helper formatting
-function formatTime(t) {
-  if (!t) return "-";
-  return new Date(t).toLocaleString();
-}
-
-function formatTier(t) {
-  if (t === 1) return "Tier 1 — Clean";
-  if (t === 2) return "Tier 2 — Noise";
-  if (t === 3) return "Tier 3 — Audit";
-  return "-";
-}
-
-function mask(id = "") {
-  if (id.length <= 4) return "****";
-  return id.slice(0, 3) + "***" + id.slice(-2);
-}
-
