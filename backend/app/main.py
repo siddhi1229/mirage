@@ -129,10 +129,14 @@ async def handle_query(
             served_response = noisy_response
         
         # ✅ Step 7: Blockchain audit for Tier 3
+        tx_hash = None
+        hash_id = None
         if tier == 3:
-            asyncio.create_task(
-                trigger_blockchain_audit(user_id, hybrid_score, duration_mins)
-            )
+            # We await this to get the hashes before saving to DB
+            audit_result = await trigger_blockchain_audit(user_id, hybrid_score, duration_mins)
+            if audit_result:
+                tx_hash = audit_result["tx_hash"]
+                hash_id = audit_result["hash_id"]
         
         # ✅ Step 8: Update user state in database (CRITICAL)
         current_embedding = embedding_model.encode(request.prompt, convert_to_numpy=True)
@@ -141,10 +145,10 @@ async def handle_query(
             {
                 "last_active_at": now,
                 "dynamic_mean_rpm": rpm,
-                "last_query_embedding": current_embedding,
                 "total_queries": user_state["total_queries"] + 1,
-                "query_timestamps": user_state["query_timestamps"],
-                "tier": tier
+                "tier": tier,
+                "blockchain_tx": tx_hash, 
+                "privacy_hash_id": hash_id
             }
         )
         

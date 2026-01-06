@@ -1,0 +1,326 @@
+[
+  {
+    "inputs": [],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "string",
+        "name": "threatId",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes32",
+        "name": "threatHash",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "timestamp",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "enum ThreatChain.Severity",
+        "name": "severity",
+        "type": "uint8"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "blockNumber",
+        "type": "uint256"
+      }
+    ],
+    "name": "ThreatLogged",
+    "type": "event"
+  },
+  {
+    "inputs": [],
+    "name": "getAllThreats",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "string",
+            "name": "threatId",
+            "type": "string"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "threatHash",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "uint256",
+            "name": "timestamp",
+            "type": "uint256"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "ipAddressHash",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "enum ThreatChain.Severity",
+            "name": "severity",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint256",
+            "name": "blockNumber",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct ThreatChain.ThreatRecord[]",
+        "name": "",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_index",
+        "type": "uint256"
+      }
+    ],
+    "name": "getThreat",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "string",
+            "name": "threatId",
+            "type": "string"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "threatHash",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "uint256",
+            "name": "timestamp",
+            "type": "uint256"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "ipAddressHash",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "enum ThreatChain.Severity",
+            "name": "severity",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint256",
+            "name": "blockNumber",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct ThreatChain.ThreatRecord",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "_threatId",
+        "type": "string"
+      }
+    ],
+    "name": "getThreatById",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "string",
+            "name": "threatId",
+            "type": "string"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "threatHash",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "uint256",
+            "name": "timestamp",
+            "type": "uint256"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "ipAddressHash",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "enum ThreatChain.Severity",
+            "name": "severity",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint256",
+            "name": "blockNumber",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct ThreatChain.ThreatRecord",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getThreatCount",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_startIndex",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_endIndex",
+        "type": "uint256"
+      }
+    ],
+    "name": "getThreatsRange",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "string",
+            "name": "threatId",
+            "type": "string"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "threatHash",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "uint256",
+            "name": "timestamp",
+            "type": "uint256"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "ipAddressHash",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "enum ThreatChain.Severity",
+            "name": "severity",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint256",
+            "name": "blockNumber",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct ThreatChain.ThreatRecord[]",
+        "name": "",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "_threatId",
+        "type": "string"
+      }
+    ],
+    "name": "isThreatLogged",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "_threatId",
+        "type": "string"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "_threatHash",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "string",
+        "name": "_ipAddress",
+        "type": "string"
+      },
+      {
+        "internalType": "enum ThreatChain.Severity",
+        "name": "_severity",
+        "type": "uint8"
+      }
+    ],
+    "name": "logThreat",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "owner",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  }
+]

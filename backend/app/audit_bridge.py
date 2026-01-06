@@ -5,11 +5,7 @@ from datetime import datetime, timezone
 BLOCKCHAIN_SERVICE_URL = os.getenv("BLOCKCHAIN_SERVICE_URL", "http://localhost:3001")
 
 
-async def trigger_blockchain_audit(user_id: str, hybrid_score: float, duration_mins: float) -> bool:
-    """
-    Send audit trigger to Node.js blockchain service.
-    Creates immutable record on blockchain for Tier 3 threats.
-    """
+async def trigger_blockchain_audit(user_id: str, hybrid_score: float, duration_mins: float) -> dict:
     try:
         payload = {
             "user_id": user_id,
@@ -22,18 +18,17 @@ async def trigger_blockchain_audit(user_id: str, hybrid_score: float, duration_m
             response = await client.post(
                 f"{BLOCKCHAIN_SERVICE_URL}/log-threat",
                 json=payload,
-                timeout=5.0
+                timeout=10.0
             )
             
             if response.status_code == 200:
-                print(f" Blockchain audit logged for user: {user_id}")
-                return True
-            else:
-                print(f" Blockchain service returned {response.status_code}")
-                return False
-    
+                data = response.json()
+                print(f"✅ Blockchain proof generated for: {user_id}")
+                return {
+                    "tx_hash": data.get("txHash"),
+                    "hash_id": data.get("userHashId")
+                }
+            return None
     except Exception as e:
-        print(f" Failed to trigger blockchain audit: {e}")
-        return False
-
-
+        print(f"❌ Blockchain Bridge Error: {e}")
+        return None
