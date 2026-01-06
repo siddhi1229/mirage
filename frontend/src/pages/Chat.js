@@ -1,139 +1,203 @@
-import React, { useState } from 'react';
-import axios from 'axios';
+import { useState } from "react";
+import API from "../services/api";
+import toast from "react-hot-toast";
 
-export default function Chat({ backendUrl }) {
-  const [userId, setUserId] = useState(localStorage.getItem('chatUserId') || 'user-001');
-  const [message, setMessage] = useState('');
+function getUserId() {
+  let id = localStorage.getItem("sentinel_user");
+  if (!id) {
+    id = "user-" + Math.random().toString(36).substring(2, 9);
+    localStorage.setItem("sentinel_user", id);
+  }
+  return id;
+}
+
+export default function Chat() {
+  const userId = getUserId();
   const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [responseTime, setResponseTime] = useState(null);
   const [tier, setTier] = useState(null);
+  const [score, setScore] = useState(null);
 
-  const handleSend = async () => {
-    if (!message.trim()) return;
+  async function sendMessage(e) {
+    e.preventDefault();
+    if (!input.trim()) return;
 
-    const userMsg = { role: 'user', text: message, tier: null };
-    setMessages([...messages, userMsg]);
-    setMessage('');
+    const text = input;
+    setInput("");
+
+    // Add user message
+    setMessages((prev) => [...prev, { role: "user", text }]);
     setLoading(true);
-    setResponseTime(null);
-
-    const startTime = Date.now();
 
     try {
-      const response = await axios.post(`${backendUrl}/api/chat`, 
-        { prompt: message },
+      // ✅ CORRECT: Only prompt in body, API service handles headers
+      const res = await API.post("/api/chat", {
+        prompt: text
+      });
+
+      const { response, tier: responseTier, hybrid_score } = res.data;
+
+      // Add bot response
+      setMessages((prev) => [
+        ...prev,
         {
-          headers: { 
-            'X-User-ID': userId,
-            'Content-Type': 'application/json'
-          }
+          role: "bot",
+          text: response || "No response received.",
+          tier: responseTier,
+          score: hybrid_score
         }
-      );
+      ]);
 
-      const time = Date.now() - startTime;
-      setResponseTime(time);
-      setTier(response.data.tier);
+      setTier(responseTier);
+      setScore(hybrid_score);
 
-      const botMsg = {
-        role: 'bot',
-        text: response.data.response || 'No response received',
-        tier: response.data.tier
-      };
-      setMessages(m => [...m, botMsg]);
-      localStorage.setItem('chatUserId', userId);
-
-    } catch (error) {
-      const errMsg = { 
-        role: 'system', 
-        text: `Error: ${error.response?.data?.detail || error.message}`,
-        tier: null
-      };
-      setMessages(m => [...m, errMsg]);
-      console.error('Chat error:', error);
+      // Show tier in toast
+      if (responseTier === 1) toast.success("✅ Tier 1: Normal");
+      if (responseTier === 2) toast("⚠️ Tier 2: Suspicious");
+      if (responseTier === 3) toast.error("🔴 Tier 3: Malicious");
+    } catch (err) {
+      console.error("Chat error:", err);
+      setMessages((prev) => [
+        ...prev,
+        { role: "bot", text: `❌ Error: ${err.message}` }
+      ]);
+      toast.error("Failed to send message");
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
-  };
+  }
 
   return (
-    <div>
-      <h1>Chat Interface</h1>
+    <div style={{ padding: "20px", maxWidth: "800px", margin: "0 auto" }}>
+      <h2>💬 Chat Interface</h2>
 
-      <div className="panel-split">
-        {/* INPUT PANEL */}
-        <div className="panel">
-          <h2>Send Query</h2>
-
-          <div className="form-group">
-            <label>User ID</label>
-            <input
-              type="text"
-              value={userId}
-              onChange={(e) => setUserId(e.target.value)}
-              placeholder="e.g., attacker-001"
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Message</label>
-            <textarea
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              placeholder="Type your query..."
-              rows="6"
-              onKeyPress={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSend();
-                }
+      {/* User Info */}
+      <div
+        style={{
+          background: "#f3f4f6",
+          padding: "12px",
+          borderRadius: "8px",
+          marginBottom: "16px",
+          fontSize: "12px"
+        }}
+      >
+        <p>
+          <strong>User ID:</strong> <code>{userId}</code>
+        </p>
+        {tier && (
+          <p>
+            <strong>Current Tier:</strong>{" "}
+            <span
+              style={{
+                display: "inline-block",
+                padding: "4px 8px",
+                borderRadius: "4px",
+                background:
+                  tier === 1 ? "#22c55e" : tier === 2 ? "#facc15" : "#ef4444",
+                color: tier === 1 || tier === 3 ? "white" : "black"
               }}
-            />
-          </div>
+            >
+              Tier {tier}
+            </span>{" "}
+            Score: {score?.toFixed(3)}
+          </p>
+        )}
+      </div>
 
-          <button onClick={handleSend} disabled={loading || !message.trim()}>
-            {loading ? '⏳ Processing...' : '⚡ Send'}
-          </button>
+      {/* Messages */}
+      <div
+        style={{
+          border: "1px solid #e5e7eb",
+          borderRadius: "8px",
+          padding: "16px",
+          height: "400px",
+          overflowY: "auto",
+          background: "white",
+          marginBottom: "16px"
+        }}
+      >
+        {messages.length === 0 && (
+          <p style={{ color: "#9ca3af", textAlign: "center" }}>
+            No messages yet. Start chatting!
+          </p>
+        )}
 
-          {responseTime && (
-            <div style={{ marginTop: '12px', fontSize: '12px' }}>
-              <div style={{ color: 'var(--text-secondary)', marginBottom: '6px' }}>
-                Response time: <strong style={{ color: 'var(--tier1-green)' }}>{responseTime}ms</strong>
-              </div>
-              {tier && (
-                <div style={{ marginBottom: '6px' }}>
-                  Tier: <span className={`badge tier-${tier}`}>
-                    {tier === 1 ? 'Clean' : tier === 2 ? 'Suspicious' : 'Malicious'}
-                  </span>
-                </div>
+        {messages.map((m, i) => (
+          <div
+            key={i}
+            style={{
+              marginBottom: "12px",
+              display: "flex",
+              justifyContent: m.role === "user" ? "flex-end" : "flex-start"
+            }}
+          >
+            <div
+              style={{
+                maxWidth: "70%",
+                padding: "10px 14px",
+                borderRadius: "12px",
+                background:
+                  m.role === "user" ? "#2563eb" : "#e5e7eb",
+                color: m.role === "user" ? "white" : "black",
+                wordWrap: "break-word"
+              }}
+            >
+              <p style={{ margin: 0, fontSize: "14px" }}>{m.text}</p>
+              {m.tier && (
+                <p
+                  style={{
+                    margin: "4px 0 0 0",
+                    fontSize: "11px",
+                    opacity: 0.7
+                  }}
+                >
+                  Tier {m.tier} | Score {m.score?.toFixed(3)}
+                </p>
               )}
             </div>
-          )}
-        </div>
-
-        {/* MESSAGES PANEL */}
-        <div className="panel">
-          <h2>Messages</h2>
-          <div style={{ height: '400px', overflowY: 'auto' }}>
-            {messages.length === 0 ? (
-              <p style={{ color: 'var(--text-secondary)', textAlign: 'center' }}>
-                No messages yet. Send one to start.
-              </p>
-            ) : (
-              messages.map((msg, idx) => (
-                <div key={idx} className={`message ${msg.role}`}>
-                  {msg.text}
-                  {msg.tier && (
-                    <div style={{ fontSize: '10px', marginTop: '4px', opacity: 0.7 }}>
-                      Tier {msg.tier}
-                    </div>
-                  )}
-                </div>
-              ))
-            )}
           </div>
-        </div>
+        ))}
+
+        {loading && (
+          <p style={{ fontStyle: "italic", color: "#6b7280" }}>
+            ⌛ Waiting for response...
+          </p>
+        )}
       </div>
+
+      {/* Input */}
+      <form onSubmit={sendMessage} style={{ display: "flex", gap: "10px" }}>
+        <input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Ask something..."
+          disabled={loading}
+          style={{
+            flex: 1,
+            padding: "10px 12px",
+            borderRadius: "8px",
+            border: "1px solid #ccc",
+            fontSize: "14px"
+          }}
+        />
+        <button
+          type="submit"
+          disabled={loading || !input.trim()}
+          style={{
+            padding: "10px 20px",
+            borderRadius: "8px",
+            border: "none",
+            background: loading ? "#ccc" : "#111827",
+            color: "white",
+            cursor: loading ? "not-allowed" : "pointer",
+            fontSize: "14px",
+            fontWeight: "500"
+          }}
+        >
+          {loading ? "Sending..." : "Send"}
+        </button>
+      </form>
     </div>
   );
 }

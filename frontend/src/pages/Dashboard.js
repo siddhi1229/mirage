@@ -1,91 +1,205 @@
+import { useEffect, useState } from "react";
+import API from "../services/api";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip,
+  ResponsiveContainer
+} from "recharts";
+import toast from "react-hot-toast";
 
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+const COLORS = ["#00E676", "#FF5F1F", "#FF4545"]; // green, orange, red
 
-export default function Dashboard({ backendUrl }) {
+export default function Dashboard() {
   const [sessions, setSessions] = useState([]);
-  const [stats, setStats] = useState({ total: 0, tier1: 0, tier2: 0, tier3: 0 });
+  const [stats, setStats] = useState({
+    total_sessions: 0,
+    tier1_clean: 0,
+    tier2_suspicious: 0,
+    tier3_malicious: 0
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  async function fetchData() {
+    try {
+      const res = await API.get("/api/sessions");
+      const data = res.data || [];
+
+      setSessions(data);
+
+      // Calculate stats
+      const stat = {
+        total_sessions: data.length,
+        tier1_clean: data.filter((s) => s.tier === 1).length,
+        tier2_suspicious: data.filter((s) => s.tier === 2).length,
+        tier3_malicious: data.filter((s) => s.tier === 3).length
+      };
+
+      setStats(stat);
+      setError("");
+    } catch (e) {
+      console.error("Dashboard fetch error:", e);
+      setError(`Backend Error: ${e.message}`);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await axios.get(`${backendUrl}/api/sessions`);
-        const data = Array.isArray(response.data) ? response.data : [];
-        setSessions(data);
-
-        const tier1 = data.filter(s => s.tier === 1).length;
-        const tier2 = data.filter(s => s.tier === 2).length;
-        const tier3 = data.filter(s => s.tier === 3).length;
-
-        setStats({ total: data.length, tier1, tier2, tier3 });
-      } catch (error) {
-        console.error('Failed to fetch sessions:', error);
-      }
-    };
-
     fetchData();
-    const interval = setInterval(fetchData, 5000);
+    // Auto-refresh every 2 seconds to see live attack bot data
+    const interval = setInterval(fetchData, 2000);
     return () => clearInterval(interval);
-  }, [backendUrl]);
+  }, []);
+
+  const tierData = [
+    { name: "Tier 1 (Clean)", value: stats.tier1_clean },
+    { name: "Tier 2 (Suspicious)", value: stats.tier2_suspicious },
+    { name: "Tier 3 (Malicious)", value: stats.tier3_malicious }
+  ];
 
   return (
-    <div>
-      <h1>    </h1>
+    <div style={{ padding: "20px" }}>
+      <h1>📊 MIRAGE Security Dashboard</h1>
 
-      {/* STATS */}
-      <div className="grid">
-        <div className="stat-card">
-          <div className="stat-label">Total Sessions</div>
-          <div className="stat-value">{stats.total}</div>
+      {error && (
+        <div
+          style={{
+            background: "rgba(255, 69, 69, 0.15)",
+            border: "1px solid rgba(255, 69, 69, 0.3)",
+            color: "#FF4545",
+            padding: "12px",
+            borderRadius: "8px",
+            marginBottom: "20px"
+          }}
+        >
+          ⚠️ {error}
         </div>
-        <div className="stat-card">
-          <div className="stat-label">🟢 Clean (Tier 1)</div>
-          <div className="stat-value" style={{ color: '#10b981' }}>{stats.tier1}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-label">🟠 Suspicious (Tier 2)</div>
-          <div className="stat-value" style={{ color: '#f59e0b' }}>{stats.tier2}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-label">🔴 Malicious (Tier 3)</div>
-          <div className="stat-value" style={{ color: '#ef4444' }}>{stats.tier3}</div>
-        </div>
-      </div>
+      )}
 
-      {/* SESSIONS TABLE */}
-      <div className="panel">
-        <h2>Active Sessions ({sessions.length})</h2>
-        {sessions.length === 0 ? (
-          <p style={{ color: 'var(--text-secondary)' }}>No active sessions</p>
-        ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>User ID</th>
-                <th>Tier</th>
-                <th>Time Active</th>
-                <th>Requests</th>
-                <th>Last Activity</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sessions.map((session, idx) => (
-                <tr key={idx}>
-                  <td>{session.userId}</td>
-                  <td>
-                    <span className={`badge tier-${session.tier}`}>
-                      {session.tier === 1 ? 'Clean' : session.tier === 2 ? 'Suspicious' : 'Malicious'}
-                    </span>
-                  </td>
-                  <td>{session.time_active || 0} min</td>
-                  <td>{session.request_count || 0}</td>
-                  <td>{session.last_active_at ? new Date(session.last_active_at).toLocaleTimeString() : '-'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+      {loading && <p style={{ color: "#94A3B8" }}>Loading dashboard...</p>}
+
+      {!loading && (
+        <>
+          {/* Key Metrics */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+              gap: "20px",
+              marginBottom: "30px"
+            }}
+          >
+            <MetricCard
+              title="Total Sessions"
+              value={stats.total_sessions}
+              color="#64B5F6"
+              icon="👥"
+            />
+            <MetricCard
+              title="Tier 1 (Clean)"
+              value={stats.tier1_clean}
+              color="#00E676"
+              icon="🟢"
+            />
+            <MetricCard
+              title="Tier 2 (Suspicious)"
+              value={stats.tier2_suspicious}
+              color="#FF5F1F"
+              icon="🟡"
+            />
+            <MetricCard
+              title="Tier 3 (Malicious)"
+              value={stats.tier3_malicious}
+              color="#FF4545"
+              icon="🔴"
+            />
+          </div>
+
+          {/* Pie Chart */}
+          <div
+            style={{
+              background: "rgba(15, 15, 20, 0.75)",
+              border: "1px solid rgba(224, 228, 232, 0.15)",
+              padding: "20px",
+              borderRadius: "12px",
+              boxShadow: "0 4px 20px rgba(0,0,0,0.5)",
+              marginBottom: "30px"
+            }}
+          >
+            <h2 style={{ color: "#FF5F1F", marginBottom: "20px" }}>Tier Distribution</h2>
+            <div style={{ height: "300px" }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={tierData}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={100}
+                    label
+                  >
+                    {tierData.map((_, i) => (
+                      <Cell key={i} fill={COLORS[i]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Info Box */}
+          <div
+            style={{
+              background: "rgba(255, 95, 31, 0.1)",
+              border: "1px solid rgba(255, 95, 31, 0.3)",
+              padding: "16px",
+              borderRadius: "8px",
+              color: "#E0E4E8",
+              lineHeight: "1.6"
+            }}
+          >
+            <h3 style={{ color: "#FF5F1F", margin: "0 0 12px 0" }}>⚡ How MIRAGE Works</h3>
+            <ul style={{ margin: 0, paddingLeft: "20px" }}>
+              <li>
+                <strong style={{ color: "#00E676" }}>Tier 1 (Green):</strong> Normal users with clean responses
+              </li>
+              <li>
+                <strong style={{ color: "#FF5F1F" }}>Tier 2 (Orange):</strong> Suspicious behavior detected, noisy responses applied
+              </li>
+              <li>
+                <strong style={{ color: "#FF4545" }}>Tier 3 (Red):</strong> Confirmed attack, maximum noise + blockchain audit
+              </li>
+            </ul>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function MetricCard({ title, value, color, icon }) {
+  return (
+    <div
+      style={{
+        background: "rgba(15, 15, 20, 0.75)",
+        border: `1px solid rgba(224, 228, 232, 0.15)`,
+        borderLeft: `4px solid ${color}`,
+        padding: "20px",
+        borderRadius: "8px",
+        boxShadow: "0 4px 20px rgba(0,0,0,0.5)"
+      }}
+    >
+      <p style={{ margin: "0 0 10px 0", color: "#94A3B8", fontSize: "12px" }}>
+        {icon} {title}
+      </p>
+      <p style={{ margin: 0, fontSize: "32px", fontWeight: "bold", color }}>
+        {value}
+      </p>
     </div>
   );
 }

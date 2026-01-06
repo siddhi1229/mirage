@@ -1,64 +1,156 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import { useEffect, useState } from "react";
+import API from "../services/api";
 
-export default function Audit({ backendUrl }) {
-  const [audit, setAudit] = useState([]);
+export default function Audit() {
+  const [records, setRecords] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  async function fetchAudit() {
+    try {
+      // ✅ CORRECT: /api/blockchain/status endpoint
+      const res = await API.get("/api/blockchain/status");
+      setRecords(res.data || []);
+      setError("");
+    } catch (e) {
+      console.error("Audit fetch error:", e);
+      setError(`Could not load blockchain records: ${e.message}`);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await axios.get(`${backendUrl}/api/blockchain/status`);
-        setAudit(Array.isArray(response.data) ? response.data : []);
-      } catch (error) {
-        console.error('Failed to fetch audit:', error);
-      }
-    };
-
-    fetchData();
-    const interval = setInterval(fetchData, 5000);
+    fetchAudit();
+    const interval = setInterval(fetchAudit, 10000); // Refresh every 10 sec
     return () => clearInterval(interval);
-  }, [backendUrl]);
+  }, []);
 
   return (
-    <div>
-      <h1>Blockchain Audit Trail</h1>
+    <div style={{ padding: "20px" }}>
+      <h2>⛓️ Blockchain Audit Trail</h2>
 
-      <div className="panel">
-        {audit.length === 0 ? (
-          <p style={{ color: 'var(--text-secondary)' }}>No audit events recorded</p>
-        ) : (
-          <table>
+      {error && (
+        <div
+          style={{
+            background: "#fee2e2",
+            border: "1px solid #fca5a5",
+            color: "#991b1b",
+            padding: "12px",
+            borderRadius: "8px",
+            marginBottom: "20px"
+          }}
+        >
+          ⚠️ {error}
+        </div>
+      )}
+
+      {loading && <p>Loading blockchain records...</p>}
+
+      {!loading && records.length === 0 && !error && (
+        <div
+          style={{
+            background: "#f0fdf4",
+            border: "1px solid #86efac",
+            color: "#166534",
+            padding: "16px",
+            borderRadius: "8px"
+          }}
+        >
+          ✅ No Tier 3 events recorded yet. Run attack bot to trigger audits.
+        </div>
+      )}
+
+      {!loading && records.length > 0 && (
+        <div style={{ overflowX: "auto" }}>
+          <table
+            style={{
+              width: "100%",
+              borderCollapse: "collapse",
+              background: "white",
+              boxShadow: "0 1px 3px rgba(0,0,0,0.1)"
+            }}
+          >
             <thead>
-              <tr>
-                <th>Timestamp</th>
-                <th>User ID</th>
-                <th>Tier</th>
-                <th>Action</th>
-                <th>TX Hash</th>
-                <th>Status</th>
+              <tr
+                style={{
+                  background: "#f3f4f6",
+                  borderBottom: "2px solid #e5e7eb"
+                }}
+              >
+                <th style={{ ...th, color: "#374151" }}>Timestamp</th>
+                <th style={{ ...th, color: "#374151" }}>User</th>
+                <th style={{ ...th, color: "#374151" }}>Tier</th>
+                <th style={{ ...th, color: "#374151" }}>Transaction Hash</th>
+                <th style={{ ...th, color: "#374151" }}>Status</th>
               </tr>
             </thead>
+
             <tbody>
-              {audit.map((event, idx) => (
-                <tr key={idx}>
-                  <td>{event.timestamp ? new Date(event.timestamp).toLocaleString() : '-'}</td>
-                  <td>{event.userId}</td>
-                  <td>
-                    <span className={`badge tier-${event.tier}`}>
-                      {event.tier === 1 ? 'Clean' : event.tier === 2 ? 'Suspicious' : 'Malicious'}
+              {records.map((r, i) => (
+                <tr key={i} style={{ borderBottom: "1px solid #e5e7eb" }}>
+                  <td style={td}>
+                    {new Date(r.timestamp).toLocaleString()}
+                  </td>
+                  <td style={td}>
+                    <code style={{ background: "#f3f4f6", padding: "4px 8px" }}>
+                      {maskId(r.userId)}
+                    </code>
+                  </td>
+                  <td style={td}>
+                    <span
+                      style={{
+                        display: "inline-block",
+                        padding: "4px 8px",
+                        borderRadius: "4px",
+                        background: "#ef4444",
+                        color: "white",
+                        fontWeight: "500",
+                        fontSize: "12px"
+                      }}
+                    >
+                      Tier {r.tier}
                     </span>
                   </td>
-                  <td>Blockchain Audit</td>
-                  <td style={{ fontSize: '11px', fontFamily: 'monospace' }}>
-                    {event.txHash ? event.txHash.substring(0, 20) + '...' : 'pending'}
+                  <td style={{
+                    ...td,
+                    fontFamily: "monospace",
+                    fontSize: "11px",
+                    wordBreak: "break-all",
+                    maxWidth: "300px"
+                  }}>
+                    {r.txHash || "—"}
                   </td>
-                  <td style={{ color: 'var(--tier2-orange)' }}>{event.status || 'pending'}</td>
+                  <td style={td}>
+                    <span style={{ color: "#22c55e", fontWeight: "500" }}>
+                      ✓ {r.status}
+                    </span>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
+}
+
+const th = {
+  padding: "12px",
+  textAlign: "left",
+  fontWeight: "600",
+  fontSize: "12px"
+};
+
+const td = {
+  padding: "12px",
+  textAlign: "left",
+  fontSize: "14px"
+};
+
+function maskId(id = "") {
+  if (!id) return "—";
+  if (id.length <= 4) return "****";
+  return id.slice(0, 3) + "***" + id.slice(-2);
 }

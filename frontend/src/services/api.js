@@ -1,42 +1,33 @@
-import axios from 'axios';
+import axios from "axios";
 
-export const createApiClient = (backendUrl) => {
-  return axios.create({
-    baseURL: backendUrl,
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    timeout: 10000
-  });
-};
-
-export const apiFunctions = {
-  chat: async (client, userId, prompt) => {
-    return client.post('/api/chat', 
-      { prompt },
-      {
-        headers: { 'X-User-ID': userId }
-      }
-    );
-  },
-
-  getSessions: async (client) => {
-    return client.get('/api/sessions');
-  },
-
-  getLogs: async (client) => {
-    return client.get('/api/logs');
-  },
-
-  getAudit: async (client) => {
-    return client.get('/api/blockchain/status');
-  },
-
-  getStats: async (client) => {
-    return client.get('/admin/stats');
-  },
-
-  health: async (client) => {
-    return client.get('/health');
+const API = axios.create({
+  baseURL: "http://localhost:8000",
+  timeout: 10000,
+  headers: {
+    "Content-Type": "application/json"
   }
-};
+});
+
+// Interceptor: Add X-User-ID header to all requests
+API.interceptors.request.use((config) => {
+  const userId = localStorage.getItem("sentinel_user") || "anonymous";
+  config.headers["X-User-ID"] = userId;
+  return config;
+});
+
+// Interceptor: Better error handling
+API.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response) {
+      console.error(`API Error ${error.response.status}:`, error.response.data);
+    } else if (error.request) {
+      console.error("No response from backend:", error.request);
+    } else {
+      console.error("Request setup error:", error.message);
+    }
+    return Promise.reject(error);
+  }
+);
+
+export default API;
