@@ -1,4 +1,3 @@
-
 import sqlite3
 import json
 import os
@@ -6,6 +5,7 @@ from datetime import datetime, timezone
 from typing import Dict, Optional
 import numpy as np
 from contextlib import contextmanager
+
 
 # Database file path
 DB_PATH = os.getenv("SQLITE_DB_PATH", "sentinel.db")
@@ -42,7 +42,7 @@ def init_database():
     with get_db_connection() as conn:
         cursor = conn.cursor()
         
-        # Users table
+        # Users table - FIXED: Added missing CREATE TABLE statement
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 user_id TEXT PRIMARY KEY,
@@ -51,7 +51,8 @@ def init_database():
                 dynamic_mean_rpm REAL DEFAULT 0.0,
                 last_query_embedding TEXT,
                 total_queries INTEGER DEFAULT 0,
-                query_timestamps TEXT DEFAULT '[]'
+                query_timestamps TEXT DEFAULT '[]',
+                tier INTEGER DEFAULT 1
             )
         """)
         
@@ -212,6 +213,7 @@ async def log_query(
         ))
         conn.commit()
 
+
 async def get_all_users() -> list:
     """Fetch all active users for admin dashboard"""
     with get_db_connection() as conn:
@@ -243,6 +245,7 @@ async def get_all_users() -> list:
         
         return users
 
+
 async def get_all_logs() -> list:
     """Fetch all query logs"""
     with get_db_connection() as conn:
@@ -251,6 +254,7 @@ async def get_all_logs() -> list:
         rows = cursor.fetchall()
         
         return [dict(row) for row in rows]
+
 
 async def get_all_audit_records() -> list:
     """Fetch all blockchain audit records"""

@@ -1,7 +1,7 @@
-from fastapi import FastAPI, Header, Body, HTTPException, Depends
+from fastapi import FastAPI, Header, Body, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import Optional, Dict, List
+from typing import Optional
 import asyncio
 from datetime import datetime, timezone
 
@@ -81,15 +81,11 @@ async def handle_query(
     user_id: str = Header(..., alias="X-User-ID")
 ):
     """
-    Main chat endpoint with 3-Tier Time-Stateful Defense:
-    - Tier 1 (Score < 0.8 OR < 2 mins): Clean responses
-    - Tier 2 (Score ≥ 0.8 OR 2–10 mins): Noisy responses  
-    - Tier 3 (Score ≥ 0.95 AND > 10 mins): Noisy + Blockchain audit
+    Main chat endpoint with 3-Tier Time-Stateful Defense.
     """
     try:
-        # Step 1: Fetch User State
+        # ✅ Step 1: Fetch existing user state or create new
         user_state = await get_user_state(user_id)
-        
         now = datetime.now(timezone.utc)
         user_state["query_timestamps"].append(now)
         
@@ -97,31 +93,32 @@ async def handle_query(
         if len(user_state["query_timestamps"]) > 50:
             user_state["query_timestamps"] = user_state["query_timestamps"][-50:]
         
-        # Step 2: Calculate Threat Scores
+        # ✅ Step 2: Calculate threat scores
         rpm = calculate_rpm_from_timestamps(user_state["query_timestamps"])
         v_score = calculate_v_score(rpm)
         d_score = calculate_d_score(request.prompt, user_state.get("last_query_embedding"))
         hybrid_score = calculate_hybrid_score(v_score, d_score, w1=0.4, w2=0.6)
         
-        # Step 3: Start Tracking if Suspicious
-        if hybrid_score >= 0.65 and user_state["first_seen_at"] is None:
+        # ✅ Step 3: Start tracking if suspicious
+        if hybrid_score > 0.65 and user_state["first_seen_at"] is None:
             user_state["first_seen_at"] = now
             await update_user_state(user_id, {"first_seen_at": now})
         
-        # Step 4: Calculate Duration
+        # ✅ Step 4: Calculate duration
         duration_mins = 0.0
         if user_state["first_seen_at"]:
             duration_mins = calculate_duration(user_state["first_seen_at"], now)
         
-        # Step 5: Determine Tier
-        if hybrid_score >= 0.95 and duration_mins > 10:
+        # ✅ Step 5: Determine tier
+        tier = 1
+        if hybrid_score > 0.95 and duration_mins > 10:
             tier = 3
-        elif hybrid_score >= 0.8 or (2 <= duration_mins <= 10):
+        elif hybrid_score > 0.8 or (duration_mins > 2 and duration_mins < 10):
             tier = 2
         else:
             tier = 1
         
-        # Step 6: Generate Response
+        # ✅ Step 6: Generate response
         if tier == 1:
             response_text = await get_clean_response(request.prompt)
             clean_response = response_text
@@ -131,24 +128,27 @@ async def handle_query(
             response_text = noisy_response
             served_response = noisy_response
         
-        # Step 7: Blockchain Audit for Tier 3
+        # ✅ Step 7: Blockchain audit for Tier 3
         if tier == 3:
             asyncio.create_task(
                 trigger_blockchain_audit(user_id, hybrid_score, duration_mins)
             )
         
-        # Step 8: Update User State
+        # ✅ Step 8: Update user state in database (CRITICAL)
         current_embedding = embedding_model.encode(request.prompt, convert_to_numpy=True)
+        await update_user_state(
+            user_id,
+            {
+                "last_active_at": now,
+                "dynamic_mean_rpm": rpm,
+                "last_query_embedding": current_embedding,
+                "total_queries": user_state["total_queries"] + 1,
+                "query_timestamps": user_state["query_timestamps"],
+                "tier": tier
+            }
+        )
         
-        await update_user_state(user_id, {
-            "last_active_at": now,
-            "dynamic_mean_rpm": rpm,
-            "last_query_embedding": current_embedding,
-            "total_queries": user_state["total_queries"] + 1,
-            "query_timestamps": user_state["query_timestamps"]
-        })
-        
-        # Step 9: Log Query
+        # ✅ Step 9: Log query
         await log_query(
             user_id=user_id,
             query=request.prompt,
@@ -165,9 +165,9 @@ async def handle_query(
             duration_mins=round(duration_mins, 2),
             hybrid_score=round(hybrid_score, 3)
         )
-    
+        
     except Exception as e:
-        print(f"❌ Error in handle_query: {e}")
+        print(f"Error in handle_query: {e}")
         raise HTTPException(status_code=500, detail=f"Internal error: {str(e)}")
 
 # ============================================================================
@@ -182,7 +182,7 @@ async def get_all_sessions():
             cursor = conn.cursor()
             cursor.execute("""
                 SELECT user_id, first_seen_at, last_active_at, 
-                       dynamic_mean_rpm, total_queries
+                       dynamic_mean_rpm, total_queries, tier 
                 FROM users 
                 ORDER BY last_active_at DESC
             """)
@@ -195,23 +195,14 @@ async def get_all_sessions():
                 last_active = row[2]
                 rpm = row[3]
                 total = row[4]
+                tier = row[5] if len(row) > 5 else 1
                 
-                # Calculate duration and tier
+                # Calculate duration
                 duration_mins = 0.0
                 if first_seen:
                     first_dt = datetime.fromisoformat(first_seen)
                     last_dt = datetime.fromisoformat(last_active)
                     duration_mins = (last_dt - first_dt).total_seconds() / 60.0
-                
-                # Estimate tier based on RPM and duration
-                v_score = min(1.0, rpm / 30.0)
-                hybrid_score = v_score * 0.5  # Simplified for display
-                
-                tier = 1
-                if hybrid_score >= 0.95 and duration_mins > 10:
-                    tier = 3
-                elif hybrid_score >= 0.8 or (2 <= duration_mins <= 10):
-                    tier = 2
                 
                 result.append({
                     "userId": user_id,
@@ -224,6 +215,7 @@ async def get_all_sessions():
                 })
             
             return result
+            
     except Exception as e:
         print(f"Error in get_all_sessions: {e}")
         return []
@@ -250,7 +242,7 @@ async def get_query_logs():
                     "userId": row[1],
                     "prompt": row[2],
                     "tier": row[3],
-                    "noisy_answer_served": row[4] != row[5]  # clean != served
+                    "noisy_answer_served": row[4] != row[5]
                 })
             
             return result
@@ -279,7 +271,7 @@ async def get_blockchain_audit():
                     "timestamp": row[0],
                     "userId": row[1],
                     "tier": 3,
-                    "txHash": "0x" + str(hash(row[0] + row[1]))[-40:],  # Mock hash
+                    "txHash": "0x" + str(hash(row[0] + row[1]))[-40:],
                     "status": "confirmed"
                 })
             
@@ -299,9 +291,9 @@ async def get_dashboard_stats():
             cursor.execute("SELECT COUNT(*) FROM users")
             total = cursor.fetchone()[0]
             
-            # Count by tier (simplified)
+            # Count by tier
             cursor.execute("""
-                SELECT user_id, dynamic_mean_rpm, first_seen_at, last_active_at
+                SELECT user_id, dynamic_mean_rpm, first_seen_at, last_active_at, tier
                 FROM users
             """)
             rows = cursor.fetchall()
@@ -311,22 +303,11 @@ async def get_dashboard_stats():
             tier3 = 0
             
             for row in rows:
-                rpm = row[1]
-                first_seen = row[2]
-                last_active = row[3]
+                tier = row[4] if len(row) > 4 else 1
                 
-                duration_mins = 0.0
-                if first_seen:
-                    first_dt = datetime.fromisoformat(first_seen)
-                    last_dt = datetime.fromisoformat(last_active)
-                    duration_mins = (last_dt - first_dt).total_seconds() / 60.0
-                
-                v_score = min(1.0, rpm / 30.0)
-                hybrid = v_score * 0.5
-                
-                if hybrid >= 0.95 and duration_mins > 10:
+                if tier == 3:
                     tier3 += 1
-                elif hybrid >= 0.8 or (2 <= duration_mins <= 10):
+                elif tier == 2:
                     tier2 += 1
                 else:
                     tier1 += 1
