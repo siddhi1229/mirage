@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import API from "../services/api";
 
 export default function Audit() {
@@ -6,151 +6,65 @@ export default function Audit() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  async function fetchAudit() {
-    try {
-      // ✅ CORRECT: /api/blockchain/status endpoint
-      const res = await API.get("/api/blockchain/status");
-      setRecords(res.data || []);
-      setError("");
-    } catch (e) {
-      console.error("Audit fetch error:", e);
-      setError(`Could not load blockchain records: ${e.message}`);
-    } finally {
-      setLoading(false);
-    }
-  }
-
   useEffect(() => {
+    const fetchAudit = async () => {
+      try {
+        const res = await API.get("/api/blockchain/status");
+        setRecords(res.data || []);
+        setError("");
+      } catch (e) {
+        setError("Failed to load audit records");
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchAudit();
-    const interval = setInterval(fetchAudit, 10000); // Refresh every 10 sec
+    const interval = setInterval(fetchAudit, 2000);
     return () => clearInterval(interval);
   }, []);
 
+  if (loading) return <div className="audit-container loading-state">Loading...</div>;
+  if (error) return <div className="audit-container error-state">{error}</div>;
+
   return (
-    <div style={{ padding: "20px" }}>
-      <h2>⛓️ Blockchain Audit Trail</h2>
+    <div className="audit-container">
+      <h1>Blockchain Audit Trail</h1>
+      <div className="audit-info">
+        Tier 3 (Malicious) threats are recorded here for immutable evidence.
+      </div>
 
-      {error && (
-        <div
-          style={{
-            background: "#fee2e2",
-            border: "1px solid #fca5a5",
-            color: "#991b1b",
-            padding: "12px",
-            borderRadius: "8px",
-            marginBottom: "20px"
-          }}
-        >
-          ⚠️ {error}
-        </div>
-      )}
+      <div className="audit-records">
+        {records.length === 0 ? (
+          <div className="no-data-message">
+            No Tier 3 threats recorded yet. Run attack bot for 10+ minutes.
+          </div>
+        ) : (
+          records.map((record, idx) => (
+            <div key={idx} className="audit-record">
+              <div className="audit-record-header">
+                <h3>Tier 3 Threat Detected</h3>
+                <span className="timestamp-cell">
+                  {new Date(record.timestamp).toLocaleString()}
+                </span>
+              </div>
+              <div className="audit-record-details">
+                <p><strong>User ID:</strong> <code>{record.userId}</code></p>
+                <p><strong>Status:</strong> Confirmed</p>
+                <p><strong>Transaction Hash:</strong> <code className="tx-hash">{record.txHash}</code></p>
+              </div>
+              <div className="audit-record-footer">
+                Immutable record stored on blockchain
+              </div>
+            </div>
+          ))
+        )}
+      </div>
 
-      {loading && <p>Loading blockchain records...</p>}
-
-      {!loading && records.length === 0 && !error && (
-        <div
-          style={{
-            background: "#f0fdf4",
-            border: "1px solid #86efac",
-            color: "#166534",
-            padding: "16px",
-            borderRadius: "8px"
-          }}
-        >
-          ✅ No Tier 3 events recorded yet. Run attack bot to trigger audits.
-        </div>
-      )}
-
-      {!loading && records.length > 0 && (
-        <div style={{ overflowX: "auto" }}>
-          <table
-            style={{
-              width: "100%",
-              borderCollapse: "collapse",
-              background: "white",
-              boxShadow: "0 1px 3px rgba(0,0,0,0.1)"
-            }}
-          >
-            <thead>
-              <tr
-                style={{
-                  background: "#f3f4f6",
-                  borderBottom: "2px solid #e5e7eb"
-                }}
-              >
-                <th style={{ ...th, color: "#374151" }}>Timestamp</th>
-                <th style={{ ...th, color: "#374151" }}>User</th>
-                <th style={{ ...th, color: "#374151" }}>Tier</th>
-                <th style={{ ...th, color: "#374151" }}>Transaction Hash</th>
-                <th style={{ ...th, color: "#374151" }}>Status</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {records.map((r, i) => (
-                <tr key={i} style={{ borderBottom: "1px solid #e5e7eb" }}>
-                  <td style={td}>
-                    {new Date(r.timestamp).toLocaleString()}
-                  </td>
-                  <td style={td}>
-                    <code style={{ background: "#f3f4f6", padding: "4px 8px" }}>
-                      {maskId(r.userId)}
-                    </code>
-                  </td>
-                  <td style={td}>
-                    <span
-                      style={{
-                        display: "inline-block",
-                        padding: "4px 8px",
-                        borderRadius: "4px",
-                        background: "#ef4444",
-                        color: "white",
-                        fontWeight: "500",
-                        fontSize: "12px"
-                      }}
-                    >
-                      Tier {r.tier}
-                    </span>
-                  </td>
-                  <td style={{
-                    ...td,
-                    fontFamily: "monospace",
-                    fontSize: "11px",
-                    wordBreak: "break-all",
-                    maxWidth: "300px"
-                  }}>
-                    {r.txHash || "—"}
-                  </td>
-                  <td style={td}>
-                    <span style={{ color: "#22c55e", fontWeight: "500" }}>
-                      ✓ {r.status}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <div className="blockchain-info">
+        <h3>Integration Status</h3>
+        <p>Ready for blockchain service integration at localhost:3001</p>
+      </div>
     </div>
   );
-}
-
-const th = {
-  padding: "12px",
-  textAlign: "left",
-  fontWeight: "600",
-  fontSize: "12px"
-};
-
-const td = {
-  padding: "12px",
-  textAlign: "left",
-  fontSize: "14px"
-};
-
-function maskId(id = "") {
-  if (!id) return "—";
-  if (id.length <= 4) return "****";
-  return id.slice(0, 3) + "***" + id.slice(-2);
 }

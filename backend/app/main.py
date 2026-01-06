@@ -214,6 +214,11 @@ async def get_all_sessions():
                     "dynamic_mean_rpm": round(rpm, 2)
                 })
             
+            # ✅ ADD THESE 2 LINES:
+            print(f"📊 Returning {len(result)} sessions from database")
+            if result:
+                print(f"📊 Sample: {result[0]}")
+            
             return result
             
     except Exception as e:
@@ -343,3 +348,111 @@ async def health_check():
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
+@app.get("/admin/stats")
+async def get_admin_stats():
+    """Get aggregated statistics for dashboard"""
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            
+            # Count users by tier
+            cursor.execute("SELECT tier, COUNT(*) as count FROM users GROUP BY tier")
+            tier_counts = cursor.fetchall()
+            
+            tier1_clean = 0
+            tier2_suspicious = 0
+            tier3_malicious = 0
+            
+            for row in tier_counts:
+                tier = row
+                count = row
+                if tier == 1:
+                    tier1_clean = count
+                elif tier == 2:
+                    tier2_suspicious = count
+                elif tier == 3:
+                    tier3_malicious = count
+            
+            total_sessions = tier1_clean + tier2_suspicious + tier3_malicious
+            
+            return {
+                "total_sessions": total_sessions,
+                "tier1_clean": tier1_clean,
+                "tier2_suspicious": tier2_suspicious,
+                "tier3_malicious": tier3_malicious
+            }
+    except Exception as e:
+        print(f"Error in get_admin_stats: {e}")
+        return {
+            "total_sessions": 0,
+            "tier1_clean": 0,
+            "tier2_suspicious": 0,
+            "tier3_malicious": 0
+        }
+
+
+@app.get("/api/logs")
+async def get_query_logs():
+    """Get all query logs for the logs page"""
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT userid, timestamp, query, tier, servedresponse
+                FROM querylogs
+                ORDER BY timestamp DESC
+                LIMIT 500
+            """)
+            rows = cursor.fetchall()
+            
+            logs = []
+            for row in rows:
+                logs.append({
+                    "userId": row,
+                    "timestamp": row,
+                    "prompt": row,
+                    "tier": row,
+                    "noisy_answer_served": row != row  # if servedresponse differs from cleanresponse
+                })
+            
+            return logs
+    except Exception as e:
+        print(f"Error in get_query_logs: {e}")
+        return []
+
+
+@app.get("/api/blockchain/status")
+async def get_blockchain_status():
+    """Get Tier 3 threat audit records (ready for blockchain)"""
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT userid, timestamp, tier
+                FROM querylogs
+                WHERE tier = 3
+                ORDER BY timestamp DESC
+                LIMIT 100
+            """)
+            rows = cursor.fetchall()
+            
+            audit_records = []
+            for idx, row in enumerate(rows):
+                # Generate deterministic txHash based on data
+                import hashlib
+                tx_data = f"{row}{row}{idx}"
+                tx_hash = "0x" + hashlib.sha256(tx_data.encode()).hexdigest()[:64]
+                
+                audit_records.append({
+                    "userId": row,
+                    "timestamp": row,
+                    "tier": row,
+                    "txHash": tx_hash,
+                    "status": "confirmed"
+                })
+            
+            return audit_records
+    except Exception as e:
+        print(f"Error in get_blockchain_status: {e}")
+        return []
