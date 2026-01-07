@@ -1,14 +1,14 @@
 # MIRAGE  
 ### Time-Stateful Security Layer for ML APIs
 
-Sentinel is a **state-aware security wrapper** designed to protect high-value ML APIs from **model extraction, gradient-based attacks, and adversarial probing**.  
-Unlike stateless rate-limiters or firewalls, Sentinel **tracks users over time**, adapts its responses, and escalates defenses based on behavioral intent.
+Mirage is a **state-aware security wrapper** designed to protect high-value ML APIs from **model extraction, gradient-based attacks, and adversarial probing**.  
+Unlike stateless rate-limiters or firewalls, Mirage **tracks users over time**, adapts its responses, and escalates defenses based on behavioral intent.
 
 Think of it as a security system that remembers you.
 
 ---
 
-## 🚀 Why Sentinel Exists
+## 🚀 Why Mirage Exists
 
 Modern ML APIs leak value silently.  
 Attackers don’t break in. They **ask politely, repeatedly, and systematically**.
@@ -18,21 +18,21 @@ Traditional defenses fail because they:
 - Only block, never mislead
 - Have no memory of attacker behavior
 
-**Sentinel flips the model**:  
+**Mirage flips the model**:  
 Instead of denying access, it **poisons the attacker’s data** while preserving accuracy for legitimate users.
 
 ---
 
 ## 🧠 Core Idea: Time-Stateful Defense
 
-Sentinel introduces **time as a first-class security signal**.
+Mirage introduces **time as a first-class security signal**.
 
 It tracks:
 - Query frequency
 - Semantic similarity between consecutive prompts
 - Duration of suspicious interaction
 
-Based on this, Sentinel escalates users through **three defense tiers**.
+Based on this, Mirage escalates users through **three defense tiers**.
 
 ---
 
@@ -51,7 +51,7 @@ Attackers still receive outputs — but the **data they collect becomes mathemat
 
 ## 📊 Threat Scoring Engine
 
-Sentinel computes a **hybrid threat score** in real time.
+Mirage computes a **hybrid threat score** in real time.
 
 ### Components
 
