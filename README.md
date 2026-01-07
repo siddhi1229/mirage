@@ -3,6 +3,7 @@
 ---
 ## DEMO VIDEO - https://drive.google.com/file/d/1nd1Mc3NoNcCINhS5dtgKjeMDjclJ1ZFP/view?usp=sharing
 ## PROJECT VIDEO - https://drive.google.com/file/d/1sDLjvOwKT6zfthwek38ZdiXop2MIUE9a/view?usp=sharing
+## PPT - https://www.canva.com/design/DAG9oPDg2DM/J2dt124nAJQgHbLA_AnEAw/edit
 ---
 Mirage is a **state-aware security wrapper** designed to protect high-value ML APIs from **model extraction, gradient-based attacks, and adversarial probing**.  
 Unlike stateless rate-limiters or firewalls, Mirage **tracks users over time**, adapts its responses, and escalates defenses based on behavioral intent.
