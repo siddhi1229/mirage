@@ -1,6 +1,3 @@
-# PLEASE SWITCH TO : final-day branch
-
-##
 ## MIRAGE  
 ### Time-Stateful Security Layer for ML APIs
 
